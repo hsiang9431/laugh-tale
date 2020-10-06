@@ -1,0 +1,1 @@
+echo $1 | sudo -S -- sh -c "chmod o-rwx /*; /secrete-container/bob run --dec-key-b64 $2"

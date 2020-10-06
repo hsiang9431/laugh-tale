@@ -1,0 +1,32 @@
+REPO_NAME := laugh-tale
+VERSION := $(shell git describe --abbrev=7 --dirty --always --tags)
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+BUILDTIME := $(shell TZ=UTC date)
+
+ALL_TARGETS = roger poneglyph kozuki-cli
+IMAGE_TARGETS = roger kozuki
+
+$(ALL_TARGETS):
+	CGO_ENABLED=0 go build \
+		-ldflags "-X main.Version=${VERSION} -X main.Build=${GIT_COMMIT} -X main.BuildTime=${BUILDTIME}" \
+		-o cmd/$@/$@ cmd/$@/main.go
+
+roger-image: roger poneglyph
+	cp cmd/poneglyph/poneglyph cmd/roger/
+	cp scripts/poneglyph.sh cmd/roger/
+	cat build/roger/Dockerfile | docker build -t ${REPO_NAME}/roger:${GIT_COMMIT} cmd/roger
+
+%-image: $*
+	cat build/$*/Dockerfile | docker build -t ${REPO_NAME}/$*:${GIT_COMMIT} cmd/$*
+
+clean-%:
+	rm -rf cmd/$*/$*
+
+all: $(patsubst %, %-image, $(IMAGE_TARGETS))
+
+clean: $(patsubst %, clean-%, $(TARGETS))
+
+test:
+	go test ./...
+
+.PHONY: all clean test roger-image
